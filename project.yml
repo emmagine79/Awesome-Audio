@@ -1,0 +1,71 @@
+name: AwesomeAudio
+options:
+  bundleIdPrefix: com.awesomeaudio
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15.0"
+  minimumXcodeGenVersion: "2.38.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+packages:
+  spfk-loudness:
+    url: https://github.com/ryanfrancesconi/spfk-loudness
+    from: "0.0.4"
+  DSWaveformImage:
+    url: https://github.com/dmrschmidt/DSWaveformImage
+    from: "14.0.0"
+
+targets:
+  AwesomeAudio:
+    type: application
+    platform: macOS
+    sources:
+      - path: AwesomeAudio
+        excludes:
+          - "Bridge/**"
+    resources:
+      - path: AwesomeAudio/Resources
+        buildPhase: resources
+    dependencies:
+      - package: spfk-loudness
+        product: SPFKLoudness
+      - package: DSWaveformImage
+        product: DSWaveformImage
+      - package: DSWaveformImage
+        product: DSWaveformImageViews
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.awesomeaudio.AwesomeAudio
+        INFOPLIST_KEY_CFBundleDisplayName: "Awesome Audio"
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.music"
+        SWIFT_OBJC_BRIDGING_HEADER: "AwesomeAudio/Bridge/AwesomeAudio-Bridging-Header.h"
+        OTHER_LDFLAGS:
+          - "-L$(PROJECT_DIR)/vendor/deepfilternet"
+          - "-ldeepfilter"
+        LIBRARY_SEARCH_PATHS:
+          - "$(PROJECT_DIR)/vendor/deepfilternet"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS:
+          - "DEEPFILTERNET_AVAILABLE"
+        HEADER_SEARCH_PATHS:
+          - "$(PROJECT_DIR)/AwesomeAudio/Bridge"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_ENTITLEMENTS: ""
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_IDENTITY: "-"
+
+  AwesomeAudioTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: AwesomeAudioTests
+    dependencies:
+      - target: AwesomeAudio
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.awesomeaudio.AwesomeAudioTests

@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 
 @main
 struct AwesomeAudioApp: App {
@@ -7,6 +6,11 @@ struct AwesomeAudioApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: [Preset.self, ProcessingRecord.self])
+        .windowStyle(.titleBar)
+        .defaultSize(width: 900, height: 600)
+    }
+
+    init() {
+        TempFileManager.cleanupStaleFiles()
     }
 }
