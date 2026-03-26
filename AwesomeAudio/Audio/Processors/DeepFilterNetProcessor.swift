@@ -19,6 +19,13 @@ final class DeepFilterNetProcessor: StreamingProcessor {
     private var frameOutputBuffer: [Float]
 
     init(modelPath: String, attenuationLimitDb: Float = 70) throws {
+        // Validate path before calling df_create — the Rust code panics (abort)
+        // on invalid paths rather than returning null
+        guard !modelPath.isEmpty,
+              FileManager.default.fileExists(atPath: modelPath) else {
+            throw ProcessingError.engineInitFailed
+        }
+
         guard let st = modelPath.withCString({ path in
             df_create(path, attenuationLimitDb)
         }) else {

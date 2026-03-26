@@ -18,6 +18,22 @@ import Foundation
 /// writability.
 actor ProcessingCoordinator {
 
+    // MARK: - Model Path
+
+    /// Resolves the bundled DeepFilterNet model path.
+    private static func resolveModelPath() -> String {
+        if let path = Bundle.main.path(forResource: "DeepFilterNet3_onnx", ofType: "tar.gz") {
+            return path
+        }
+        // Fallback: check Resources directory directly
+        let resourcesDir = Bundle.main.bundlePath + "/Contents/Resources"
+        let fallback = resourcesDir + "/DeepFilterNet3_onnx.tar.gz"
+        if FileManager.default.fileExists(atPath: fallback) {
+            return fallback
+        }
+        return ""
+    }
+
     // MARK: - Result
 
     struct ProcessingResult {
@@ -78,7 +94,7 @@ actor ProcessingCoordinator {
 
         // ── Pass 1 ──────────────────────────────────────────────────────────
         let cafURL = tempManager.createTempURL(extension: "caf")
-        let pass1Result = try await runPass1(
+        let pass1Output = try await runPass1(
             audioInfo: audioInfo,
             preset: preset,
             cafURL: cafURL,
@@ -90,7 +106,8 @@ actor ProcessingCoordinator {
         try await runPass2(
             cafURL: cafURL,
             wavURL: wavURL,
-            pass1AnalysisResult: pass1Result,
+            pass1AnalysisResult: pass1Output.analysis,
+            pass1Latency: pass1Output.pass1Latency,
             preset: preset,
             progress: progress
         )
@@ -162,11 +179,11 @@ actor ProcessingCoordinator {
         preset: PresetSnapshot,
         cafURL: URL,
         progress: @Sendable (ProcessingProgress) -> Void
-    ) async throws -> AnalysisResult {
+    ) async throws -> (analysis: AnalysisResult, pass1Latency: Int) {
         // Build processor chain
         let hpf = HighPassFilter(cutoffHz: preset.highPassCutoff)
         let dfn = try DeepFilterNetProcessor(
-            modelPath: "",
+            modelPath: Self.resolveModelPath(),
             attenuationLimitDb: preset.noiseReductionAttenLimitDB
         )
         dfn.setStrength(preset.noiseReductionStrength)
@@ -174,6 +191,7 @@ actor ProcessingCoordinator {
         let compressor = Compressor(preset: preset.compressionPreset)
 
         let pass1Processors: [StreamingProcessor] = [hpf, dfn, deEsser, compressor]
+        let pass1Latency = pass1Processors.reduce(0) { $0 + $1.latencySamples }
 
         // LUFS analyzer for Pass 1 output
         let lufsAnalyzer = LUFSAnalyzer()
@@ -259,7 +277,7 @@ actor ProcessingCoordinator {
             ))
         }
 
-        return lufsAnalyzer.finalize()
+        return (analysis: lufsAnalyzer.finalize(), pass1Latency: pass1Latency)
     }
 
     // MARK: - Pass 2
@@ -268,6 +286,7 @@ actor ProcessingCoordinator {
         cafURL: URL,
         wavURL: URL,
         pass1AnalysisResult: AnalysisResult,
+        pass1Latency: Int,
         preset: PresetSnapshot,
         progress: @Sendable (ProcessingProgress) -> Void
     ) async throws {
@@ -286,18 +305,9 @@ actor ProcessingCoordinator {
             ? TPDFDitherer(targetBitDepth: 16)
             : nil
 
-        // Compute total latency across all processors in both passes for delay compensation.
-        // We instantiate fresh Pass 1 processors just to read their latencySamples property.
-        let hpfLatency = HighPassFilter(cutoffHz: preset.highPassCutoff).latencySamples
-        let dfnLatency = (try? DeepFilterNetProcessor(
-            modelPath: "",
-            attenuationLimitDb: preset.noiseReductionAttenLimitDB
-        ))?.latencySamples ?? 0
-        let deEsserLatency = DeEsser(amount: preset.deEssAmount).latencySamples
-        let compressorLatency = Compressor(preset: preset.compressionPreset).latencySamples
-        let pass2Latency = pass2StreamingProcessors.map(\.latencySamples).reduce(0, +)
-
-        let totalLatency = hpfLatency + dfnLatency + deEsserLatency + compressorLatency + pass2Latency
+        // Total latency = pass1 latency (from actual processors) + pass2 latency
+        let pass2Latency = pass2StreamingProcessors.reduce(0) { $0 + $1.latencySamples }
+        let totalLatency = pass1Latency + pass2Latency
 
         // Open CAF file for reading
         let cafFile: AVAudioFile
