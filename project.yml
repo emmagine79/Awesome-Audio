@@ -41,6 +41,7 @@ targets:
         product: DSWaveformImageViews
     settings:
       base:
+        GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.awesomeaudio.AwesomeAudio
         INFOPLIST_KEY_CFBundleDisplayName: "Awesome Audio"
         INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.music"
@@ -68,4 +69,5 @@ targets:
       - target: AwesomeAudio
     settings:
       base:
+        GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.awesomeaudio.AwesomeAudioTests
