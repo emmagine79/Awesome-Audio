@@ -9,196 +9,118 @@ enum CompressionPreset: String, Codable, CaseIterable {
 
     var threshold: Float {
         switch self {
-        case .gentle: return -18.0
-        case .medium: return -24.0
-        case .heavy:  return -30.0
+        case .gentle: return -20
+        case .medium: return -24
+        case .heavy: return -30
         }
     }
 
     var ratio: Float {
         switch self {
-        case .gentle: return 2.0
-        case .medium: return 3.5
-        case .heavy:  return 6.0
+        case .gentle: return 2
+        case .medium: return 3
+        case .heavy: return 4
         }
     }
 
     var attackMs: Float {
         switch self {
-        case .gentle: return 20.0
-        case .medium: return 10.0
-        case .heavy:  return 5.0
+        case .gentle: return 20
+        case .medium: return 10
+        case .heavy: return 5
         }
     }
 
     var releaseMs: Float {
         switch self {
-        case .gentle: return 200.0
-        case .medium: return 120.0
-        case .heavy:  return 80.0
+        case .gentle: return 200
+        case .medium: return 100
+        case .heavy: return 50
         }
     }
 }
 
-// MARK: - PresetSnapshot (Codable value type for serialization)
+// MARK: - PresetSnapshot (Codable, for serialization in ProcessingRecord)
 
 struct PresetSnapshot: Codable, Equatable {
-    var name: String
-    var targetLUFS: Float
-    var truePeakLimitDBFS: Float
-    var highPassFrequency: Float
+    var highPassCutoff: Float
+    var noiseReductionStrength: Float       // UI value 0.0-1.0
+    var noiseReductionAttenLimitDB: Float   // engine-native value, for reproducibility
+    var deEssAmount: Float                  // 0.0-1.0
     var compressionPreset: CompressionPreset
-    var compressionThreshold: Float
-    var compressionRatio: Float
-    var compressionAttackMs: Float
-    var compressionReleaseMs: Float
-    var deEsserFrequency: Float
-    var deEsserThreshold: Float
-    var deEsserRatio: Float
-    var noiseReductionEnabled: Bool
-    var noiseReductionAttenLimitDB: Float
+    var targetLUFS: Float
+    var truePeakCeiling: Float
+    var outputBitDepth: Int
 }
 
 // MARK: - Preset (plain Swift class, usable without SwiftData)
-// The SwiftData @Model wrapper lives in AwesomeAudio/AppLayer/PresetModel.swift
-// and is only compiled into the Xcode app target.
 
 final class Preset {
+    var id: UUID
     var name: String
-    var createdAt: Date
     var isBuiltIn: Bool
+    var createdAt: Date
 
-    // Loudness
-    var targetLUFS: Float
-    var truePeakLimitDBFS: Float
-
-    // High-pass filter
-    var highPassFrequency: Float
-
-    // Compression
+    // Processing parameters
+    var highPassCutoff: Float          // 60-120 Hz
+    var noiseReductionStrength: Float  // 0.0-1.0
+    var deEssAmount: Float             // 0.0-1.0
     var compressionPreset: CompressionPreset
-    var compressionThreshold: Float
-    var compressionRatio: Float
-    var compressionAttackMs: Float
-    var compressionReleaseMs: Float
-
-    // De-esser
-    var deEsserFrequency: Float
-    var deEsserThreshold: Float
-    var deEsserRatio: Float
-
-    // Noise reduction
-    var noiseReductionEnabled: Bool
-    var noiseReductionAttenLimitDB: Float
+    var targetLUFS: Float              // -16 or -14
+    var truePeakCeiling: Float         // default -1.0 dBTP
+    var outputBitDepth: Int            // 16 or 24
 
     init(
         name: String,
         isBuiltIn: Bool = false,
-        targetLUFS: Float = -16.0,
-        truePeakLimitDBFS: Float = -1.0,
-        highPassFrequency: Float = 80.0,
+        highPassCutoff: Float = 80,
+        noiseReductionStrength: Float = 0.7,
+        deEssAmount: Float = 0.5,
         compressionPreset: CompressionPreset = .medium,
-        compressionThreshold: Float = -24.0,
-        compressionRatio: Float = 3.5,
-        compressionAttackMs: Float = 10.0,
-        compressionReleaseMs: Float = 120.0,
-        deEsserFrequency: Float = 7500.0,
-        deEsserThreshold: Float = -30.0,
-        deEsserRatio: Float = 4.0,
-        noiseReductionEnabled: Bool = true,
-        noiseReductionAttenLimitDB: Float = 40.0
+        targetLUFS: Float = -16,
+        truePeakCeiling: Float = -1.0,
+        outputBitDepth: Int = 24
     ) {
+        self.id = UUID()
         self.name = name
-        self.createdAt = Date()
         self.isBuiltIn = isBuiltIn
-        self.targetLUFS = targetLUFS
-        self.truePeakLimitDBFS = truePeakLimitDBFS
-        self.highPassFrequency = highPassFrequency
+        self.createdAt = Date()
+        self.highPassCutoff = highPassCutoff
+        self.noiseReductionStrength = noiseReductionStrength
+        self.deEssAmount = deEssAmount
         self.compressionPreset = compressionPreset
-        self.compressionThreshold = compressionThreshold
-        self.compressionRatio = compressionRatio
-        self.compressionAttackMs = compressionAttackMs
-        self.compressionReleaseMs = compressionReleaseMs
-        self.deEsserFrequency = deEsserFrequency
-        self.deEsserThreshold = deEsserThreshold
-        self.deEsserRatio = deEsserRatio
-        self.noiseReductionEnabled = noiseReductionEnabled
-        self.noiseReductionAttenLimitDB = noiseReductionAttenLimitDB
+        self.targetLUFS = targetLUFS
+        self.truePeakCeiling = truePeakCeiling
+        self.outputBitDepth = outputBitDepth
     }
 
-    /// Returns a Codable snapshot of the current preset values.
     func snapshot() -> PresetSnapshot {
         PresetSnapshot(
-            name: name,
-            targetLUFS: targetLUFS,
-            truePeakLimitDBFS: truePeakLimitDBFS,
-            highPassFrequency: highPassFrequency,
+            highPassCutoff: highPassCutoff,
+            noiseReductionStrength: noiseReductionStrength,
+            noiseReductionAttenLimitDB: noiseReductionStrength * 100.0,
+            deEssAmount: deEssAmount,
             compressionPreset: compressionPreset,
-            compressionThreshold: compressionThreshold,
-            compressionRatio: compressionRatio,
-            compressionAttackMs: compressionAttackMs,
-            compressionReleaseMs: compressionReleaseMs,
-            deEsserFrequency: deEsserFrequency,
-            deEsserThreshold: deEsserThreshold,
-            deEsserRatio: deEsserRatio,
-            noiseReductionEnabled: noiseReductionEnabled,
-            noiseReductionAttenLimitDB: noiseReductionAttenLimitDB
+            targetLUFS: targetLUFS,
+            truePeakCeiling: truePeakCeiling,
+            outputBitDepth: outputBitDepth
         )
     }
 
     // MARK: Built-in presets
 
     static let builtInPresets: [Preset] = [
-        Preset(
-            name: "Podcast",
-            isBuiltIn: true,
-            targetLUFS: -16.0,
-            truePeakLimitDBFS: -1.0,
-            highPassFrequency: 80.0,
-            compressionPreset: .medium,
-            compressionThreshold: -24.0,
-            compressionRatio: 3.5,
-            compressionAttackMs: 10.0,
-            compressionReleaseMs: 120.0,
-            deEsserFrequency: 7500.0,
-            deEsserThreshold: -30.0,
-            deEsserRatio: 4.0,
-            noiseReductionEnabled: true,
-            noiseReductionAttenLimitDB: 40.0
-        ),
-        Preset(
-            name: "Voiceover",
-            isBuiltIn: true,
-            targetLUFS: -23.0,
-            truePeakLimitDBFS: -3.0,
-            highPassFrequency: 100.0,
-            compressionPreset: .gentle,
-            compressionThreshold: -18.0,
-            compressionRatio: 2.0,
-            compressionAttackMs: 20.0,
-            compressionReleaseMs: 200.0,
-            deEsserFrequency: 8000.0,
-            deEsserThreshold: -28.0,
-            deEsserRatio: 3.0,
-            noiseReductionEnabled: true,
-            noiseReductionAttenLimitDB: 30.0
-        ),
-        Preset(
-            name: "Audiobook",
-            isBuiltIn: true,
-            targetLUFS: -18.0,
-            truePeakLimitDBFS: -3.0,
-            highPassFrequency: 90.0,
-            compressionPreset: .gentle,
-            compressionThreshold: -20.0,
-            compressionRatio: 2.5,
-            compressionAttackMs: 15.0,
-            compressionReleaseMs: 150.0,
-            deEsserFrequency: 7000.0,
-            deEsserThreshold: -32.0,
-            deEsserRatio: 3.5,
-            noiseReductionEnabled: true,
-            noiseReductionAttenLimitDB: 35.0
-        )
+        Preset(name: "Podcast Standard", isBuiltIn: true,
+               highPassCutoff: 80, noiseReductionStrength: 0.7, deEssAmount: 0.5,
+               compressionPreset: .medium, targetLUFS: -16, outputBitDepth: 24),
+        Preset(name: "YouTube", isBuiltIn: true,
+               highPassCutoff: 80, noiseReductionStrength: 0.7, deEssAmount: 0.5,
+               compressionPreset: .medium, targetLUFS: -14, outputBitDepth: 24),
+        Preset(name: "Noisy Environment", isBuiltIn: true,
+               highPassCutoff: 100, noiseReductionStrength: 0.9, deEssAmount: 0.4,
+               compressionPreset: .heavy, targetLUFS: -16, outputBitDepth: 24),
+        Preset(name: "Minimal", isBuiltIn: true,
+               highPassCutoff: 60, noiseReductionStrength: 0.3, deEssAmount: 0.3,
+               compressionPreset: .gentle, targetLUFS: -16, outputBitDepth: 24),
     ]
 }
