@@ -56,6 +56,11 @@ struct PresetSnapshot: Codable, Equatable {
 // MARK: - Preset (plain Swift class, usable without SwiftData)
 
 final class Preset {
+    static func attenuationLimitDb(for strength: Float) -> Float {
+        let clamped = max(0, min(1, strength))
+        return 6.0 + clamped * 24.0
+    }
+
     var id: UUID
     var name: String
     var isBuiltIn: Bool
@@ -74,7 +79,7 @@ final class Preset {
         name: String,
         isBuiltIn: Bool = false,
         highPassCutoff: Float = 80,
-        noiseReductionStrength: Float = 0.7,
+        noiseReductionStrength: Float = 0.35,
         deEssAmount: Float = 0.5,
         compressionPreset: CompressionPreset = .medium,
         targetLUFS: Float = -16,
@@ -98,7 +103,7 @@ final class Preset {
         PresetSnapshot(
             highPassCutoff: highPassCutoff,
             noiseReductionStrength: noiseReductionStrength,
-            noiseReductionAttenLimitDB: noiseReductionStrength * 100.0,
+            noiseReductionAttenLimitDB: Self.attenuationLimitDb(for: noiseReductionStrength),
             deEssAmount: deEssAmount,
             compressionPreset: compressionPreset,
             targetLUFS: targetLUFS,
@@ -111,16 +116,16 @@ final class Preset {
 
     static let builtInPresets: [Preset] = [
         Preset(name: "Podcast Standard", isBuiltIn: true,
-               highPassCutoff: 80, noiseReductionStrength: 0.7, deEssAmount: 0.5,
+               highPassCutoff: 80, noiseReductionStrength: 0.35, deEssAmount: 0.5,
                compressionPreset: .medium, targetLUFS: -16, outputBitDepth: 24),
         Preset(name: "YouTube", isBuiltIn: true,
-               highPassCutoff: 80, noiseReductionStrength: 0.7, deEssAmount: 0.5,
+               highPassCutoff: 80, noiseReductionStrength: 0.35, deEssAmount: 0.5,
                compressionPreset: .medium, targetLUFS: -14, outputBitDepth: 24),
         Preset(name: "Noisy Environment", isBuiltIn: true,
-               highPassCutoff: 100, noiseReductionStrength: 0.9, deEssAmount: 0.4,
+               highPassCutoff: 100, noiseReductionStrength: 0.60, deEssAmount: 0.4,
                compressionPreset: .heavy, targetLUFS: -16, outputBitDepth: 24),
         Preset(name: "Minimal", isBuiltIn: true,
-               highPassCutoff: 60, noiseReductionStrength: 0.3, deEssAmount: 0.3,
+               highPassCutoff: 60, noiseReductionStrength: 0.20, deEssAmount: 0.3,
                compressionPreset: .gentle, targetLUFS: -16, outputBitDepth: 24),
     ]
 }

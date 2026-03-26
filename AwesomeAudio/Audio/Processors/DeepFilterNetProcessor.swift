@@ -18,7 +18,7 @@ final class DeepFilterNetProcessor: StreamingProcessor {
     private var outputAccumulator: [Float] = []
     private var frameOutputBuffer: [Float]
 
-    init(modelPath: String, attenuationLimitDb: Float = 70) throws {
+    init(modelPath: String, attenuationLimitDb: Float = 18) throws {
         // Validate path before calling df_create — the Rust code panics (abort)
         // on invalid paths rather than returning null
         guard !modelPath.isEmpty,
@@ -46,7 +46,7 @@ final class DeepFilterNetProcessor: StreamingProcessor {
 
     func setStrength(_ strength: Float) {
         guard let st = state else { return }
-        let attenDb = strength * 100.0
+        let attenDb = Preset.attenuationLimitDb(for: strength)
         df_set_atten_lim(st, attenDb)
     }
 
@@ -92,7 +92,7 @@ final class DeepFilterNetProcessor: StreamingProcessor {
     let sampleRate: Double = 48000
     let latencySamples: Int = 0
 
-    init(modelPath: String, attenuationLimitDb: Float = 70) throws {
+    init(modelPath: String, attenuationLimitDb: Float = 18) throws {
         // No-op in stub builds
     }
 

@@ -10,7 +10,7 @@ struct PresetTests {
         #expect(preset.name == "Test")
         #expect(preset.isBuiltIn == false)
         #expect(preset.highPassCutoff == 80)
-        #expect(preset.noiseReductionStrength == 0.7)
+        #expect(preset.noiseReductionStrength == 0.35)
         #expect(preset.deEssAmount == 0.5)
         #expect(preset.compressionPreset == .medium)
         #expect(preset.targetLUFS == -16)
@@ -42,11 +42,17 @@ struct PresetTests {
         #expect(p.releaseMs == 50)
     }
 
+    @Test func attenuationLimitMappingIsConservative() {
+        #expect(Preset.attenuationLimitDb(for: 0.0) == 6.0)
+        #expect(Preset.attenuationLimitDb(for: 0.5) == 18.0)
+        #expect(Preset.attenuationLimitDb(for: 1.0) == 30.0)
+    }
+
     @Test func presetSnapshotRoundtrip() throws {
         let snapshot = PresetSnapshot(
             highPassCutoff: 80,
-            noiseReductionStrength: 0.7,
-            noiseReductionAttenLimitDB: 70,
+            noiseReductionStrength: 0.35,
+            noiseReductionAttenLimitDB: 14.4,
             deEssAmount: 0.5,
             compressionPreset: .medium,
             targetLUFS: -16,
@@ -59,11 +65,11 @@ struct PresetTests {
     }
 
     @Test func presetSnapshotFromModel() {
-        let preset = Preset(name: "Test", noiseReductionStrength: 0.7)
+        let preset = Preset(name: "Test", noiseReductionStrength: 0.35)
         let snapshot = preset.snapshot()
         #expect(snapshot.highPassCutoff == 80)
-        #expect(snapshot.noiseReductionStrength == 0.7)
-        #expect(snapshot.noiseReductionAttenLimitDB == 70)  // 0.7 * 100
+        #expect(snapshot.noiseReductionStrength == 0.35)
+        #expect(snapshot.noiseReductionAttenLimitDB == 14.4)
         #expect(snapshot.compressionPreset == .medium)
     }
 
@@ -79,5 +85,13 @@ struct PresetTests {
         #expect(names.contains("YouTube"))
         #expect(names.contains("Noisy Environment"))
         #expect(names.contains("Minimal"))
+    }
+
+    @Test func builtInPresetNoiseReductionStrengthsAreSafer() {
+        let presetsByName = Dictionary(uniqueKeysWithValues: Preset.builtInPresets.map { ($0.name, $0) })
+        #expect(presetsByName["Podcast Standard"]?.noiseReductionStrength == 0.35)
+        #expect(presetsByName["YouTube"]?.noiseReductionStrength == 0.35)
+        #expect(presetsByName["Noisy Environment"]?.noiseReductionStrength == 0.60)
+        #expect(presetsByName["Minimal"]?.noiseReductionStrength == 0.20)
     }
 }

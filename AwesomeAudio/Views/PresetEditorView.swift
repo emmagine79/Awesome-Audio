@@ -10,7 +10,7 @@ struct PresetEditorView: View {
 
     @State private var presetName: String = ""
     @State private var highPassCutoff: Float = 80
-    @State private var noiseReductionStrength: Float = 0.7
+    @State private var noiseReductionStrength: Float = 0.35
     @State private var deEssAmount: Float = 0.5
     @State private var compressionPreset: CompressionPreset = .medium
     @State private var targetLUFS: Float = -16

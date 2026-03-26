@@ -319,43 +319,13 @@ actor ProcessingCoordinator {
 
         let totalFrames = Int(cafFile.length)
 
-        // Intermediate Float32 format for in-memory processing
-        guard let floatFormat = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: Self.sampleRate,
-            channels: 1,
-            interleaved: false
-        ) else {
-            throw ProcessingError.engineInitFailed
-        }
-
-        // Determine WAV output format
-        let wavBitDepth = preset.outputBitDepth
-        // AVFoundation uses Int32 buffers to carry 24-bit samples; we request Int32 and
-        // set the bit-depth explicitly in settings so the file encoder writes the right word size.
-        let wavCommonFormat: AVAudioCommonFormat = wavBitDepth == 16
-            ? .pcmFormatInt16
-            : .pcmFormatInt32
-
-        guard let wavFormat = AVAudioFormat(
-            commonFormat: wavCommonFormat,
-            sampleRate: Self.sampleRate,
-            channels: 1,
-            interleaved: false
-        ) else {
-            throw ProcessingError.engineInitFailed
-        }
-
-        var wavSettings = wavFormat.settings
-        wavSettings[AVLinearPCMBitDepthKey] = wavBitDepth
-        wavSettings[AVLinearPCMIsFloatKey] = false
-        wavSettings[AVLinearPCMIsBigEndianKey] = false
-        wavSettings[AVLinearPCMIsNonInterleaved] = false
-        wavSettings[AVFormatIDKey] = kAudioFormatLinearPCM
-
-        let wavFile: AVAudioFile
+        let wavWriter: WAVExportWriter
         do {
-            wavFile = try AVAudioFile(forWriting: wavURL, settings: wavSettings)
+            wavWriter = try WAVExportWriter(
+                url: wavURL,
+                sampleRate: Self.sampleRate,
+                bitDepth: preset.outputBitDepth
+            )
         } catch {
             throw ProcessingError.processingFailed(stage: "Pass2 WAV open", underlying: error)
         }
@@ -423,63 +393,7 @@ actor ProcessingCoordinator {
             if framesToWrite > 0 {
                 try chunkSamples.withUnsafeMutableBufferPointer { ptr in
                     guard let src = ptr.baseAddress else { return }
-
-                    // Build Float32 buffer for conversion
-                    guard let floatBuf = AVAudioPCMBuffer(
-                        pcmFormat: floatFormat,
-                        frameCapacity: AVAudioFrameCount(framesToWrite)
-                    ) else {
-                        throw ProcessingError.processingFailed(
-                            stage: "Pass2 float buffer",
-                            underlying: NSError(domain: "AwesomeAudio", code: -2)
-                        )
-                    }
-                    floatBuf.frameLength = AVAudioFrameCount(framesToWrite)
-                    if let dest = floatBuf.floatChannelData?[0] {
-                        dest.initialize(from: src + writeStart, count: framesToWrite)
-                    }
-
-                    // Convert Float32 → target integer format
-                    guard let converter = AVAudioConverter(from: floatFormat, to: wavFormat) else {
-                        throw ProcessingError.processingFailed(
-                            stage: "Pass2 converter",
-                            underlying: NSError(domain: "AwesomeAudio", code: -3)
-                        )
-                    }
-
-                    guard let intBuf = AVAudioPCMBuffer(
-                        pcmFormat: wavFormat,
-                        frameCapacity: AVAudioFrameCount(framesToWrite)
-                    ) else {
-                        throw ProcessingError.processingFailed(
-                            stage: "Pass2 int buffer",
-                            underlying: NSError(domain: "AwesomeAudio", code: -4)
-                        )
-                    }
-
-                    var inputConsumed = false
-                    var convError: NSError?
-                    let status = converter.convert(to: intBuf, error: &convError) { _, outStatus in
-                        if inputConsumed {
-                            outStatus.pointee = .noDataNow
-                            return nil
-                        }
-                        outStatus.pointee = .haveData
-                        inputConsumed = true
-                        return floatBuf
-                    }
-
-                    if let err = convError {
-                        throw ProcessingError.processingFailed(stage: "Pass2 convert", underlying: err)
-                    }
-                    guard status != .error else {
-                        throw ProcessingError.processingFailed(
-                            stage: "Pass2 convert",
-                            underlying: NSError(domain: "AwesomeAudio", code: -5)
-                        )
-                    }
-
-                    try wavFile.write(from: intBuf)
+                    try wavWriter.append(samples: src + writeStart, frameCount: framesToWrite)
                 }
             }
 

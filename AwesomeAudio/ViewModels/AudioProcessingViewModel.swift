@@ -46,7 +46,7 @@ final class AudioProcessingViewModel {
     // MARK: - Editable Settings (mirror of active preset, user-adjustable)
 
     var highPassCutoff: Float = 80
-    var noiseReductionStrength: Float = 0.7
+    var noiseReductionStrength: Float = 0.35
     var deEssAmount: Float = 0.5
     var compressionPreset: CompressionPreset = .medium
     var targetLUFS: Float = -16
@@ -177,7 +177,7 @@ final class AudioProcessingViewModel {
         PresetSnapshot(
             highPassCutoff: highPassCutoff,
             noiseReductionStrength: noiseReductionStrength,
-            noiseReductionAttenLimitDB: noiseReductionStrength * 100.0,
+            noiseReductionAttenLimitDB: Preset.attenuationLimitDb(for: noiseReductionStrength),
             deEssAmount: deEssAmount,
             compressionPreset: compressionPreset,
             targetLUFS: targetLUFS,
