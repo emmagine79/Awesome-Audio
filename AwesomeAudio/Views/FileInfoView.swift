@@ -50,6 +50,12 @@ struct FileInfoView: View {
             Text(formatDetails)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            if showsMonoProcessingWarning {
+                Text("Current processing path exports mono output for stereo sources.")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            }
         }
     }
 
@@ -77,6 +83,10 @@ struct FileInfoView: View {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    private var showsMonoProcessingWarning: Bool {
+        (viewModel.audioFileInfo?.originalChannelCount ?? 1) > 1
     }
 
     // MARK: - LUFS Display

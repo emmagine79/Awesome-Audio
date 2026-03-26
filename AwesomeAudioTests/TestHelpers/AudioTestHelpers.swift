@@ -85,7 +85,7 @@ enum AudioTestHelpers {
         sampleRate: Float = 48_000,
         lowHz: Float,
         highHz: Float,
-        probeStepHz: Float = 250
+        probeStepHz: Float = 100
     ) -> Float {
         guard !samples.isEmpty, highHz >= lowHz else { return 0 }
 
@@ -117,6 +117,18 @@ enum AudioTestHelpers {
             highHz: denominator.upperBound
         )
 
+        guard denominatorEnergy > 0 else { return 0 }
+        return numeratorEnergy / denominatorEnergy
+    }
+
+    static func toneEnergyRatio(
+        _ samples: [Float],
+        sampleRate: Float = 48_000,
+        numeratorFrequency: Float,
+        denominatorFrequency: Float
+    ) -> Float {
+        let numeratorEnergy = toneEnergy(samples, sampleRate: sampleRate, frequency: numeratorFrequency)
+        let denominatorEnergy = toneEnergy(samples, sampleRate: sampleRate, frequency: denominatorFrequency)
         guard denominatorEnergy > 0 else { return 0 }
         return numeratorEnergy / denominatorEnergy
     }

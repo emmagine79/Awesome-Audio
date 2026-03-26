@@ -48,8 +48,11 @@ final class AudioProcessingViewModel {
     var highPassCutoff: Float = 80
     var noiseReductionStrength: Float = 0.35
     var deEssAmount: Float = 0.5
+    var presenceAmount: Float = 0.25
+    var airAmount: Float = 0.15
     var compressionPreset: CompressionPreset = .medium
     var targetLUFS: Float = -16
+    var truePeakCeiling: Float = -2.0
     var outputBitDepth: Int = 24
 
     // MARK: - Computed
@@ -88,8 +91,11 @@ final class AudioProcessingViewModel {
         highPassCutoff = preset.highPassCutoff
         noiseReductionStrength = preset.noiseReductionStrength
         deEssAmount = preset.deEssAmount
+        presenceAmount = preset.presenceAmount
+        airAmount = preset.airAmount
         compressionPreset = preset.compressionPreset
         targetLUFS = preset.targetLUFS
+        truePeakCeiling = preset.truePeakCeiling
         outputBitDepth = preset.outputBitDepth
     }
 
@@ -179,9 +185,11 @@ final class AudioProcessingViewModel {
             noiseReductionStrength: noiseReductionStrength,
             noiseReductionAttenLimitDB: Preset.attenuationLimitDb(for: noiseReductionStrength),
             deEssAmount: deEssAmount,
+            presenceAmount: presenceAmount,
+            airAmount: airAmount,
             compressionPreset: compressionPreset,
             targetLUFS: targetLUFS,
-            truePeakCeiling: -1.0,
+            truePeakCeiling: truePeakCeiling,
             outputBitDepth: outputBitDepth
         )
     }

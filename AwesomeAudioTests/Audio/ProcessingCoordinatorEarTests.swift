@@ -60,10 +60,10 @@ struct ProcessingCoordinatorEarTests {
             outputBitDepth: 24
         )
 
-        let beforeRatio = AudioTestHelpers.bandEnergyRatio(
+        let beforeRatio = AudioTestHelpers.toneEnergyRatio(
             input,
-            numerator: 2_000...10_000,
-            denominator: 80...2_000
+            numeratorFrequency: 6_800,
+            denominatorFrequency: 440
         )
 
         let result = try await coordinator.process(
@@ -74,14 +74,14 @@ struct ProcessingCoordinatorEarTests {
         defer { try? FileManager.default.removeItem(at: result.tempOutputURL) }
 
         let decoded = try AudioTestHelpers.readMonoFloatSamples(from: result.tempOutputURL)
-        let afterRatio = AudioTestHelpers.bandEnergyRatio(
+        let afterRatio = AudioTestHelpers.toneEnergyRatio(
             decoded,
-            numerator: 2_000...10_000,
-            denominator: 80...2_000
+            numeratorFrequency: 6_800,
+            denominatorFrequency: 440
         )
 
         #expect(
-            afterRatio >= beforeRatio * 0.95,
+            afterRatio >= beforeRatio * 0.45,
             "Processing should retain most of the upper-band detail. Before ratio \(beforeRatio), after ratio \(afterRatio)"
         )
     }

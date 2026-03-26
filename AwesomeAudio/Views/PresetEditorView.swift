@@ -12,6 +12,8 @@ struct PresetEditorView: View {
     @State private var highPassCutoff: Float = 80
     @State private var noiseReductionStrength: Float = 0.35
     @State private var deEssAmount: Float = 0.5
+    @State private var presenceAmount: Float = 0.25
+    @State private var airAmount: Float = 0.15
     @State private var compressionPreset: CompressionPreset = .medium
     @State private var targetLUFS: Float = -16
     @State private var outputBitDepth: Int = 24
@@ -97,6 +99,24 @@ struct PresetEditorView: View {
                 displayValue: "\(Int(deEssAmount * 100))%"
             )
 
+            EditorSliderRow(
+                title: "Presence",
+                icon: "speaker.wave.2.circle",
+                iconColor: .pink,
+                value: $presenceAmount,
+                range: 0...1,
+                displayValue: "\(Int(presenceAmount * 100))%"
+            )
+
+            EditorSliderRow(
+                title: "Air",
+                icon: "sparkles",
+                iconColor: .mint,
+                value: $airAmount,
+                range: 0...1,
+                displayValue: "\(Int(airAmount * 100))%"
+            )
+
             // Compression
             VStack(alignment: .leading, spacing: 6) {
                 Label("Compression", systemImage: "dial.medium.fill")
@@ -166,6 +186,8 @@ struct PresetEditorView: View {
         highPassCutoff = viewModel.highPassCutoff
         noiseReductionStrength = viewModel.noiseReductionStrength
         deEssAmount = viewModel.deEssAmount
+        presenceAmount = viewModel.presenceAmount
+        airAmount = viewModel.airAmount
         compressionPreset = viewModel.compressionPreset
         targetLUFS = viewModel.targetLUFS
         outputBitDepth = viewModel.outputBitDepth
@@ -178,8 +200,11 @@ struct PresetEditorView: View {
             highPassCutoff: highPassCutoff,
             noiseReductionStrength: noiseReductionStrength,
             deEssAmount: deEssAmount,
+            presenceAmount: presenceAmount,
+            airAmount: airAmount,
             compressionPreset: compressionPreset,
             targetLUFS: targetLUFS,
+            truePeakCeiling: viewModel.truePeakCeiling,
             outputBitDepth: outputBitDepth
         )
         presetManager.createPreset(from: source, name: source.name)

@@ -12,9 +12,11 @@ struct PresetTests {
         #expect(preset.highPassCutoff == 80)
         #expect(preset.noiseReductionStrength == 0.35)
         #expect(preset.deEssAmount == 0.5)
+        #expect(preset.presenceAmount == 0.25)
+        #expect(preset.airAmount == 0.15)
         #expect(preset.compressionPreset == .medium)
         #expect(preset.targetLUFS == -16)
-        #expect(preset.truePeakCeiling == -1.0)
+        #expect(preset.truePeakCeiling == -2.0)
         #expect(preset.outputBitDepth == 24)
     }
 
@@ -54,9 +56,11 @@ struct PresetTests {
             noiseReductionStrength: 0.35,
             noiseReductionAttenLimitDB: 14.4,
             deEssAmount: 0.5,
+            presenceAmount: 0.30,
+            airAmount: 0.18,
             compressionPreset: .medium,
             targetLUFS: -16,
-            truePeakCeiling: -1.0,
+            truePeakCeiling: -2.0,
             outputBitDepth: 24
         )
         let data = try JSONEncoder().encode(snapshot)
@@ -70,6 +74,8 @@ struct PresetTests {
         #expect(snapshot.highPassCutoff == 80)
         #expect(snapshot.noiseReductionStrength == 0.35)
         #expect(snapshot.noiseReductionAttenLimitDB == 14.4)
+        #expect(snapshot.presenceAmount == 0.25)
+        #expect(snapshot.airAmount == 0.15)
         #expect(snapshot.compressionPreset == .medium)
     }
 
@@ -89,9 +95,17 @@ struct PresetTests {
 
     @Test func builtInPresetNoiseReductionStrengthsAreSafer() {
         let presetsByName = Dictionary(uniqueKeysWithValues: Preset.builtInPresets.map { ($0.name, $0) })
-        #expect(presetsByName["Podcast Standard"]?.noiseReductionStrength == 0.35)
-        #expect(presetsByName["YouTube"]?.noiseReductionStrength == 0.35)
-        #expect(presetsByName["Noisy Environment"]?.noiseReductionStrength == 0.60)
-        #expect(presetsByName["Minimal"]?.noiseReductionStrength == 0.20)
+        #expect(presetsByName["Podcast Standard"]?.noiseReductionStrength == 0.10)
+        #expect(presetsByName["YouTube"]?.noiseReductionStrength == 0.10)
+        #expect(presetsByName["Noisy Environment"]?.noiseReductionStrength == 0.35)
+        #expect(presetsByName["Minimal"]?.noiseReductionStrength == 0.0)
+    }
+
+    @Test func builtInPresetsAdoptMasteringFriendlyToneDefaults() {
+        let presetsByName = Dictionary(uniqueKeysWithValues: Preset.builtInPresets.map { ($0.name, $0) })
+        #expect(presetsByName["Podcast Standard"]?.truePeakCeiling == -2.0)
+        #expect(presetsByName["Podcast Standard"]?.presenceAmount == 0.30)
+        #expect(presetsByName["Podcast Standard"]?.airAmount == 0.18)
+        #expect(presetsByName["Minimal"]?.deEssAmount == 0.10)
     }
 }

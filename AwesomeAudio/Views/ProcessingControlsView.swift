@@ -30,6 +30,8 @@ struct ProcessingControlsView: View {
             hpfCard
             deEssingCard
             compressionCard
+            presenceCard
+            airCard
         }
     }
 
@@ -114,6 +116,50 @@ struct ProcessingControlsView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+        }
+    }
+
+    private var presenceCard: some View {
+        ControlCard(
+            title: "Presence",
+            icon: "speaker.wave.2.circle",
+            iconColor: .pink
+        ) {
+            VStack(spacing: 6) {
+                Slider(value: $viewModel.presenceAmount, in: 0...1)
+                    .tint(.pink)
+                HStack {
+                    Text("Flat").font(.caption2).foregroundStyle(.tertiary)
+                    Spacer()
+                    Text("\(Int(viewModel.presenceAmount * 100))%")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text("Lift").font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
+        }
+    }
+
+    private var airCard: some View {
+        ControlCard(
+            title: "Air",
+            icon: "sparkles",
+            iconColor: .mint
+        ) {
+            VStack(spacing: 6) {
+                Slider(value: $viewModel.airAmount, in: 0...1)
+                    .tint(.mint)
+                HStack {
+                    Text("Flat").font(.caption2).foregroundStyle(.tertiary)
+                    Spacer()
+                    Text("\(Int(viewModel.airAmount * 100))%")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text("Lift").font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
         }
     }
 

@@ -49,7 +49,7 @@ actor ProcessingCoordinator {
 
     private static let chunkSize = 4096
     private static let sampleRate: Double = 48_000
-    private static let gainOvershootLU: Float = 0.3
+    private static let gainOvershootLU: Float = 0.0
 
     // MARK: - Dependencies
 
@@ -188,9 +188,13 @@ actor ProcessingCoordinator {
         )
         dfn.setStrength(preset.noiseReductionStrength)
         let deEsser = DeEsser(amount: preset.deEssAmount)
+        let toneShaper = ToneShaper(
+            presenceAmount: preset.presenceAmount,
+            airAmount: preset.airAmount
+        )
         let compressor = Compressor(preset: preset.compressionPreset)
 
-        let pass1Processors: [StreamingProcessor] = [hpf, dfn, deEsser, compressor]
+        let pass1Processors: [StreamingProcessor] = [hpf, dfn, deEsser, toneShaper, compressor]
         let pass1Latency = pass1Processors.reduce(0) { $0 + $1.latencySamples }
 
         // LUFS analyzer for Pass 1 output
