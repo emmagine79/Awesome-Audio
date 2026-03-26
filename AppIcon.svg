@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Background gradient: dark blue top-left to deep navy bottom-right -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#16213e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f3460;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Radial glow in center -->
+    <radialGradient id="centerGlow" cx="50%" cy="50%" r="45%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:0.30" />
+      <stop offset="100%" style="stop-color:#4facfe;stop-opacity:0" />
+    </radialGradient>
+
+    <!-- Waveform bar gradient: cyan top to teal bottom -->
+    <linearGradient id="barGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Clip to squircle shape -->
+    <clipPath id="squircleClip">
+      <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224" />
+    </clipPath>
+  </defs>
+
+  <!-- Squircle background -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224"
+        fill="url(#bgGradient)" />
+
+  <!-- Subtle white border at 8% opacity -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224"
+        fill="none" stroke="white" stroke-width="6" stroke-opacity="0.08" />
+
+  <!-- Center radial glow -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224"
+        fill="url(#centerGlow)" />
+
+  <!--
+    13 waveform bars centered at x=512, y=512
+    Bar layout (center bar index 6, 0-based):
+    Gaps between bar centers: 44px
+    Center x positions (spacing 44px apart, 13 bars):
+      bar 0:  512 - 6*44 = 512 - 264 = 248
+      bar 1:  292
+      bar 2:  336
+      bar 3:  380
+      bar 4:  424
+      bar 5:  468
+      bar 6:  512  (center)
+      bar 7:  556
+      bar 8:  600
+      bar 9:  644
+      bar 10: 688
+      bar 11: 732
+      bar 12: 776
+
+    Widths:
+      bar 6 (center):     16
+      bar 5, 7:           14
+      bar 4, 8:           12
+      bar 3, 9:           11
+      bar 2, 10:          10
+      bar 1, 11:           9 (rounding to 10)
+      bar 0, 12:           9
+
+    Heights (asymmetric, real waveform feel, centered at y=512):
+      bar 0:  120
+      bar 1:  200
+      bar 2:  310
+      bar 3:  260
+      bar 4:  420
+      bar 5:  370
+      bar 6:  500
+      bar 7:  390
+      bar 8:  440
+      bar 9:  280
+      bar 10: 340
+      bar 11: 220
+      bar 12: 140
+
+    y = 512 - height/2  (vertically centered)
+  -->
+
+  <!-- Bar 0: x=248, w=9, h=120 -->
+  <rect x="243.5" y="452" width="9" height="120"
+        rx="4.5" ry="4.5" fill="url(#barGradient)" />
+
+  <!-- Bar 1: x=292, w=10, h=200 -->
+  <rect x="287" y="412" width="10" height="200"
+        rx="5" ry="5" fill="url(#barGradient)" />
+
+  <!-- Bar 2: x=336, w=10, h=310 -->
+  <rect x="331" y="357" width="10" height="310"
+        rx="5" ry="5" fill="url(#barGradient)" />
+
+  <!-- Bar 3: x=380, w=11, h=260 -->
+  <rect x="374.5" y="382" width="11" height="260"
+        rx="5.5" ry="5.5" fill="url(#barGradient)" />
+
+  <!-- Bar 4: x=424, w=12, h=420 -->
+  <rect x="418" y="302" width="12" height="420"
+        rx="6" ry="6" fill="url(#barGradient)" />
+
+  <!-- Bar 5: x=468, w=14, h=370 -->
+  <rect x="461" y="327" width="14" height="370"
+        rx="7" ry="7" fill="url(#barGradient)" />
+
+  <!-- Bar 6: x=512, w=16, h=500 (center, tallest) -->
+  <rect x="504" y="262" width="16" height="500"
+        rx="8" ry="8" fill="url(#barGradient)" />
+
+  <!-- Bar 7: x=556, w=14, h=390 -->
+  <rect x="549" y="317" width="14" height="390"
+        rx="7" ry="7" fill="url(#barGradient)" />
+
+  <!-- Bar 8: x=600, w=12, h=440 -->
+  <rect x="594" y="292" width="12" height="440"
+        rx="6" ry="6" fill="url(#barGradient)" />
+
+  <!-- Bar 9: x=644, w=11, h=280 -->
+  <rect x="638.5" y="372" width="11" height="280"
+        rx="5.5" ry="5.5" fill="url(#barGradient)" />
+
+  <!-- Bar 10: x=688, w=10, h=340 -->
+  <rect x="683" y="342" width="10" height="340"
+        rx="5" ry="5" fill="url(#barGradient)" />
+
+  <!-- Bar 11: x=732, w=10, h=220 -->
+  <rect x="727" y="402" width="10" height="220"
+        rx="5" ry="5" fill="url(#barGradient)" />
+
+  <!-- Bar 12: x=776, w=9, h=140 -->
+  <rect x="771.5" y="442" width="9" height="140"
+        rx="4.5" ry="4.5" fill="url(#barGradient)" />
+</svg>
