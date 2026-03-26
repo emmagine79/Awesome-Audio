@@ -33,6 +33,15 @@ Thumbs.db
 *.swp
 *.swo
 
+# Build output
+build/
+
+# Release artifacts
+*.zip
+
+# Test audio samples
+audio samples/
+
 # DeepFilterNet vendor (cloned repo + build artifacts)
 vendor/deepfilternet/DeepFilterNet/
 vendor/deepfilternet/libdeepfilter.a
