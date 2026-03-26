@@ -33,6 +33,13 @@ Thumbs.db
 *.swp
 *.swo
 
+# DeepFilterNet vendor (cloned repo + build artifacts)
+vendor/deepfilternet/DeepFilterNet/
+vendor/deepfilternet/libdeepfilter.a
+
+# Superpowers brainstorm sessions
+.superpowers/
+
 # Environment / secrets
 .env
 *.pem
