@@ -17,7 +17,8 @@ struct DeEsserTests {
     // MARK: - Sibilant Attenuation
 
     @Test func sibilantFrequencyIsAttenuated() {
-        // 7kHz sine at amount=1.0 should be attenuated by more than 3dB
+        // 7kHz sine at amount=1.0 should still be attenuated, but more gently
+        // than the original de-esser implementation.
         let deEsser = DeEsser(amount: 1.0)
 
         // Warm up to clear transient
@@ -40,7 +41,7 @@ struct DeEsserTests {
         let outputRms = AudioTestHelpers.rms(outputSlice)
 
         let attenuationDb = AudioTestHelpers.linearToDb(inputRms) - AudioTestHelpers.linearToDb(outputRms)
-        #expect(attenuationDb > 3.0, "Expected >3dB attenuation at 7kHz, got \(attenuationDb)dB")
+        #expect(attenuationDb > 1.0, "Expected >1dB attenuation at 7kHz, got \(attenuationDb)dB")
     }
 
     // MARK: - Non-Sibilant Pass-Through

@@ -23,6 +23,36 @@ enum AudioTestHelpers {
         [Float](repeating: 0, count: Int(sampleRate * duration))
     }
 
+    static func speechLikeFixture(sampleRate: Float = 48_000, duration: Float = 2.0) -> [Float] {
+        let sampleCount = Int(sampleRate * duration)
+        var samples = [Float](repeating: 0, count: sampleCount)
+
+        let lowFundamental: Float = 180
+        let midHarmonic: Float = 540
+        let presenceHarmonic: Float = 2_700
+        let sibilance: Float = 6_800
+
+        for i in 0..<sampleCount {
+            let time = Float(i) / sampleRate
+
+            let phraseEnvelope = 0.45 + 0.35 * max(0, sin(2.0 * .pi * 1.7 * time))
+            let syllablePulse = 0.55 + 0.45 * max(0, sin(2.0 * .pi * 4.8 * time))
+            let envelope = phraseEnvelope * syllablePulse
+
+            let base =
+                0.34 * sin(2.0 * .pi * lowFundamental * time) +
+                0.16 * sin(2.0 * .pi * midHarmonic * time) +
+                0.08 * sin(2.0 * .pi * presenceHarmonic * time)
+
+            let sibilanceGate = pow(max(0, sin(2.0 * .pi * 7.0 * time)), 6)
+            let brightBurst = 0.18 * sibilanceGate * sin(2.0 * .pi * sibilance * time)
+
+            samples[i] = envelope * (base + brightBurst)
+        }
+
+        return samples
+    }
+
     static func rms(_ samples: [Float]) -> Float {
         var result: Float = 0
         vDSP_rmsqv(samples, 1, &result, vDSP_Length(samples.count))
@@ -48,6 +78,77 @@ enum AudioTestHelpers {
 
     static func linearToDb(_ linear: Float) -> Float {
         20 * log10(max(linear, 1e-10))
+    }
+
+    static func spectralBandEnergy(
+        _ samples: [Float],
+        sampleRate: Float = 48_000,
+        lowHz: Float,
+        highHz: Float,
+        probeStepHz: Float = 100
+    ) -> Float {
+        guard !samples.isEmpty, highHz >= lowHz else { return 0 }
+
+        var total: Float = 0
+        var frequency = max(lowHz, probeStepHz)
+        while frequency <= highHz {
+            total += toneEnergy(samples, sampleRate: sampleRate, frequency: frequency)
+            frequency += probeStepHz
+        }
+        return total
+    }
+
+    static func bandEnergyRatio(
+        _ samples: [Float],
+        sampleRate: Float = 48_000,
+        numerator: ClosedRange<Float>,
+        denominator: ClosedRange<Float>
+    ) -> Float {
+        let numeratorEnergy = spectralBandEnergy(
+            samples,
+            sampleRate: sampleRate,
+            lowHz: numerator.lowerBound,
+            highHz: numerator.upperBound
+        )
+        let denominatorEnergy = spectralBandEnergy(
+            samples,
+            sampleRate: sampleRate,
+            lowHz: denominator.lowerBound,
+            highHz: denominator.upperBound
+        )
+
+        guard denominatorEnergy > 0 else { return 0 }
+        return numeratorEnergy / denominatorEnergy
+    }
+
+    static func toneEnergyRatio(
+        _ samples: [Float],
+        sampleRate: Float = 48_000,
+        numeratorFrequency: Float,
+        denominatorFrequency: Float
+    ) -> Float {
+        let numeratorEnergy = toneEnergy(samples, sampleRate: sampleRate, frequency: numeratorFrequency)
+        let denominatorEnergy = toneEnergy(samples, sampleRate: sampleRate, frequency: denominatorFrequency)
+        guard denominatorEnergy > 0 else { return 0 }
+        return numeratorEnergy / denominatorEnergy
+    }
+
+    static func analyze(_ samples: [Float]) -> AnalysisResult {
+        let analyzer = LUFSAnalyzer()
+        samples.withUnsafeBufferPointer { ptr in
+            guard let base = ptr.baseAddress else { return }
+            analyzer.analyze(base, frameCount: ptr.count)
+        }
+        return analyzer.finalize()
+    }
+
+    static func audioMetadata(for url: URL) throws -> (sampleRate: Double, channelCount: Int, bitDepth: Int) {
+        let file = try AVAudioFile(forReading: url)
+        return (
+            sampleRate: file.processingFormat.sampleRate,
+            channelCount: Int(file.processingFormat.channelCount),
+            bitDepth: Int(file.fileFormat.streamDescription.pointee.mBitsPerChannel)
+        )
     }
 
     static func writeFloatWav(samples: [Float], url: URL, sampleRate: Double = 48_000) throws {
@@ -118,5 +219,21 @@ enum AudioTestHelpers {
             fileSizeBytes: UInt64(samples.count * MemoryLayout<Float>.size),
             sourceURL: sourceURL
         )
+    }
+
+    private static func toneEnergy(_ samples: [Float], sampleRate: Float, frequency: Float) -> Float {
+        let angleScale = 2.0 * Float.pi * frequency / sampleRate
+        var cosineProjection: Float = 0
+        var sineProjection: Float = 0
+
+        for i in samples.indices {
+            let phase = angleScale * Float(i)
+            let sample = samples[i]
+            cosineProjection += sample * cos(phase)
+            sineProjection += sample * sin(phase)
+        }
+
+        let normalized = 2.0 / Float(samples.count)
+        return (cosineProjection * cosineProjection + sineProjection * sineProjection) * normalized * normalized
     }
 }

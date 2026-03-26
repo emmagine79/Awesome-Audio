@@ -238,3 +238,12 @@ git commit -m "docs: record ear-test validation notes"
 - Release build succeeds
 - processed spoken-word sample no longer sounds obviously clipped or dulled
 - release notes updated with both fixed defects and remaining concerns
+
+## Validation Notes
+
+- Full Swift test suite is green at `68 tests` across `14 suites`.
+- Release build succeeded with `xcodebuild` and produced `build/DerivedData/Build/Products/Release/AwesomeAudio.app`.
+- Loudness overshoot was removed from the final normalization pass, which eliminated the earlier measurable LUFS push past target.
+- A new tone-shaping stage adds restrained presence and air lift so the default output better survives the ear test without chasing the Audacity macro exactly.
+- Stereo is still not preserved end-to-end. The current fix makes that limitation explicit in the UI and README instead of silently hiding it.
+- The DeepFilterNet static library still emits linker warnings about its recorded macOS build version during app builds, but the app links and runs successfully.

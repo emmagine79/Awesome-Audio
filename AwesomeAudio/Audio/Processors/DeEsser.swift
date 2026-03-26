@@ -26,7 +26,7 @@ final class DeEsser: StreamingProcessor {
     private static let sidechainQ: Double = 2.0
     private static let attackMs: Double = 0.5
     private static let releaseMs: Double = 20.0
-    private static let maxReductionDb: Float = 6.0
+    private static let maxReductionDb: Float = 1.5
 
     // MARK: - Configuration
 
@@ -85,8 +85,9 @@ final class DeEsser: StreamingProcessor {
         attackCoeff  = Float(exp(-1.0 / (DeEsser.attackMs  * 0.001 * sr)))
         releaseCoeff = Float(exp(-1.0 / (DeEsser.releaseMs * 0.001 * sr)))
 
-        // Threshold: −20 dBFS (0.1 linear). Signals below this aren't "esses".
-        threshold = 0.1
+        // Threshold: roughly −15 dBFS. This keeps the de-esser from biting into
+        // general brightness on otherwise clean spoken-word material.
+        threshold = 0.24
 
         // Maximum linear gain reduction (e.g. −6 dB = 0.5 linear)
         let maxDb = DeEsser.maxReductionDb * self.amount
