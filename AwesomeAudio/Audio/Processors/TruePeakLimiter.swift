@@ -65,6 +65,7 @@ final class TruePeakLimiter: StreamingProcessor {
 
     /// Current linear gain applied to delayed output (starts at unity).
     private var currentGain: Float = 1.0
+    private var holdSamplesRemaining: Int = 0
 
     // MARK: - Init
 
@@ -76,7 +77,7 @@ final class TruePeakLimiter: StreamingProcessor {
         history = [Float](repeating: 0.0, count: Self.tapsPerPhase)
         lookahead = [Float](repeating: 0.0, count: latencySamples)
         lookaheadRead = 0
-        lookaheadWrite = latencySamples - 240  // write starts 240 ahead of read → 240-sample delay
+        lookaheadWrite = 0
     }
 
     // MARK: - StreamingProcessor conformance
@@ -89,14 +90,10 @@ final class TruePeakLimiter: StreamingProcessor {
             history[historyIndex] = inputSample
             historyIndex = (historyIndex + 1) % Self.tapsPerPhase
 
-            // 2. Write input sample into lookahead buffer
-            lookahead[lookaheadWrite] = inputSample
-            lookaheadWrite = (lookaheadWrite + 1) % latencySamples
-
-            // 3. Compute true peak across all 4 polyphase phases via FIR convolution
+            // 2. Compute true peak across all 4 polyphase phases via FIR convolution
             let truePeak = computeTruePeak()
 
-            // 4. Determine required gain reduction
+            // 3. Determine required gain reduction
             let absTP = abs(truePeak)
             if absTP > ceiling {
                 // Instant attack: clamp gain immediately
@@ -104,16 +101,25 @@ final class TruePeakLimiter: StreamingProcessor {
                 if requiredGain < currentGain {
                     currentGain = requiredGain
                 }
+                holdSamplesRemaining = latencySamples
             }
 
-            // 5. Apply gain to the delayed (lookahead) sample
+            // 4. Apply gain to the delayed (lookahead) sample
             let delayedSample = lookahead[lookaheadRead]
             buffer[i] = delayedSample * currentGain
+
+            // 5. Write input sample into lookahead buffer after reading the delayed sample
+            lookahead[lookaheadWrite] = inputSample
             lookaheadRead = (lookaheadRead + 1) % latencySamples
+            lookaheadWrite = (lookaheadWrite + 1) % latencySamples
 
             // 6. Release: let gain recover toward unity
             if currentGain < 1.0 {
-                currentGain = min(1.0, currentGain / releaseCoeff)
+                if holdSamplesRemaining > 0 {
+                    holdSamplesRemaining -= 1
+                } else {
+                    currentGain = min(1.0, currentGain / releaseCoeff)
+                }
             }
         }
     }
@@ -125,6 +131,7 @@ final class TruePeakLimiter: StreamingProcessor {
         lookaheadWrite = 0
         lookaheadRead = 0
         currentGain = 1.0
+        holdSamplesRemaining = 0
     }
 
     // MARK: - Private helpers

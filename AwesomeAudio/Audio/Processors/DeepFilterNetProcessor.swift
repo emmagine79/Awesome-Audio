@@ -11,12 +11,14 @@ import Foundation
 final class DeepFilterNetProcessor: StreamingProcessor {
     let sampleRate: Double = 48000
     private(set) var latencySamples: Int = 0
+    let processingFrameLength: Int
 
     private var state: OpaquePointer?
     private let frameLength: Int
-    private var inputAccumulator: [Float] = []
-    private var outputAccumulator: [Float] = []
+    private var frameInputBuffer: [Float]
     private var frameOutputBuffer: [Float]
+    private var outputAccumulator: [Float] = []
+    private var isBypassed = false
 
     init(modelPath: String, attenuationLimitDb: Float = 18) throws {
         // Validate path before calling df_create — the Rust code panics (abort)
@@ -34,7 +36,9 @@ final class DeepFilterNetProcessor: StreamingProcessor {
 
         self.state = st
         self.frameLength = Int(df_get_frame_length(st))
+        self.processingFrameLength = self.frameLength
         self.latencySamples = Int(df_get_delay_samples(st))
+        self.frameInputBuffer = [Float](repeating: 0, count: frameLength)
         self.frameOutputBuffer = [Float](repeating: 0, count: frameLength)
     }
 
@@ -45,43 +49,57 @@ final class DeepFilterNetProcessor: StreamingProcessor {
     }
 
     func setStrength(_ strength: Float) {
+        isBypassed = strength <= 0.0001
         guard let st = state else { return }
         let attenDb = Preset.attenuationLimitDb(for: strength)
         df_set_atten_lim(st, attenDb)
     }
 
     func process(_ buffer: UnsafeMutablePointer<Float>, frameCount: Int) {
-        guard let st = state else { return }
+        guard let st = state, !isBypassed, frameCount > 0 else { return }
 
-        inputAccumulator.append(contentsOf: UnsafeBufferPointer(start: buffer, count: frameCount))
+        var framesWritten = 0
+        if !outputAccumulator.isEmpty {
+            let available = min(outputAccumulator.count, frameCount)
+            for i in 0..<available {
+                buffer[i] = outputAccumulator[i]
+            }
+            outputAccumulator.removeFirst(available)
+            framesWritten = available
+        }
 
-        while inputAccumulator.count >= frameLength {
-            var frameInput = Array(inputAccumulator.prefix(frameLength))
-            inputAccumulator.removeFirst(frameLength)
+        while framesWritten < frameCount {
+            let framesThisPass = min(frameLength, frameCount - framesWritten)
+            frameInputBuffer.withUnsafeMutableBufferPointer { ptr in
+                guard let base = ptr.baseAddress else { return }
+                for i in 0..<frameLength {
+                    base[i] = 0
+                }
+                base.update(from: buffer + framesWritten, count: framesThisPass)
+            }
 
-            frameOutputBuffer = [Float](repeating: 0, count: frameLength)
-            frameInput.withUnsafeMutableBufferPointer { inPtr in
-                frameOutputBuffer.withUnsafeMutableBufferPointer { outPtr in
+            frameOutputBuffer.withUnsafeMutableBufferPointer { outPtr in
+                frameInputBuffer.withUnsafeMutableBufferPointer { inPtr in
                     _ = df_process_frame(st, inPtr.baseAddress, outPtr.baseAddress)
                 }
             }
-            outputAccumulator.append(contentsOf: frameOutputBuffer)
-        }
 
-        let available = min(outputAccumulator.count, frameCount)
-        for i in 0..<available {
-            buffer[i] = outputAccumulator[i]
-        }
-        outputAccumulator.removeFirst(available)
-        for i in available..<frameCount {
-            buffer[i] = 0
+            frameOutputBuffer.withUnsafeBufferPointer { ptr in
+                guard let base = ptr.baseAddress else { return }
+                (buffer + framesWritten).update(from: base, count: framesThisPass)
+            }
+
+            if framesThisPass < frameLength {
+                outputAccumulator.append(contentsOf: frameOutputBuffer[framesThisPass..<frameLength])
+            }
+            framesWritten += framesThisPass
         }
     }
 
     func reset() {
-        inputAccumulator.removeAll()
-        outputAccumulator.removeAll()
+        frameInputBuffer = [Float](repeating: 0, count: frameLength)
         frameOutputBuffer = [Float](repeating: 0, count: frameLength)
+        outputAccumulator.removeAll()
     }
 }
 
@@ -91,6 +109,7 @@ final class DeepFilterNetProcessor: StreamingProcessor {
 final class DeepFilterNetProcessor: StreamingProcessor {
     let sampleRate: Double = 48000
     let latencySamples: Int = 0
+    let processingFrameLength: Int = 0
 
     init(modelPath: String, attenuationLimitDb: Float = 18) throws {
         // No-op in stub builds

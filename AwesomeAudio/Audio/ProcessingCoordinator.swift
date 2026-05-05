@@ -181,12 +181,8 @@ actor ProcessingCoordinator {
         progress: @Sendable (ProcessingProgress) -> Void
     ) async throws -> (analysis: AnalysisResult, pass1Latency: Int) {
         // Build processor chain
+        var pass1ChunkSize = Self.chunkSize
         let hpf = HighPassFilter(cutoffHz: preset.highPassCutoff)
-        let dfn = try DeepFilterNetProcessor(
-            modelPath: Self.resolveModelPath(),
-            attenuationLimitDb: preset.noiseReductionAttenLimitDB
-        )
-        dfn.setStrength(preset.noiseReductionStrength)
         let deEsser = DeEsser(amount: preset.deEssAmount)
         let toneShaper = ToneShaper(
             presenceAmount: preset.presenceAmount,
@@ -194,7 +190,21 @@ actor ProcessingCoordinator {
         )
         let compressor = Compressor(preset: preset.compressionPreset)
 
-        let pass1Processors: [StreamingProcessor] = [hpf, dfn, deEsser, toneShaper, compressor]
+        var pass1Processors: [StreamingProcessor] = [hpf]
+        if preset.noiseReductionStrength > 0.0001 {
+            let dfn = try DeepFilterNetProcessor(
+                modelPath: Self.resolveModelPath(),
+                attenuationLimitDb: preset.noiseReductionAttenLimitDB
+            )
+            dfn.setStrength(preset.noiseReductionStrength)
+            pass1Processors.append(dfn)
+            if dfn.processingFrameLength > 0 {
+                pass1ChunkSize = dfn.processingFrameLength
+            }
+        }
+        pass1Processors.append(deEsser)
+        pass1Processors.append(toneShaper)
+        pass1Processors.append(compressor)
         let pass1Latency = pass1Processors.reduce(0) { $0 + $1.latencySamples }
 
         // LUFS analyzer for Pass 1 output
@@ -219,7 +229,7 @@ actor ProcessingCoordinator {
 
         let totalFrames = audioInfo.frameCount
         var framesProcessed = 0
-        let chunkSize = Self.chunkSize
+        let chunkSize = pass1ChunkSize
 
         // Allocate a reusable chunk buffer
         var chunkBuffer = [Float](repeating: 0, count: chunkSize)
@@ -279,6 +289,47 @@ actor ProcessingCoordinator {
                 fractionComplete: fraction * 0.70,
                 passNumber: 1
             ))
+        }
+
+        var flushRemaining = pass1Latency
+        while flushRemaining > 0 {
+            try Task.checkCancellation()
+
+            let thisChunk = min(chunkSize, flushRemaining)
+            chunkBuffer.withUnsafeMutableBufferPointer { ptr in
+                for i in 0..<thisChunk {
+                    ptr[i] = 0
+                }
+                guard let base = ptr.baseAddress else { return }
+                for processor in pass1Processors {
+                    processor.process(base, frameCount: thisChunk)
+                }
+            }
+
+            chunkBuffer.withUnsafeBufferPointer { ptr in
+                guard let base = ptr.baseAddress else { return }
+                lufsAnalyzer.analyze(base, frameCount: thisChunk)
+            }
+
+            try chunkBuffer.withUnsafeMutableBufferPointer { ptr in
+                guard let base = ptr.baseAddress,
+                      let writeBuffer = AVAudioPCMBuffer(
+                          pcmFormat: cafFormat,
+                          frameCapacity: AVAudioFrameCount(thisChunk)
+                      ) else {
+                    throw ProcessingError.processingFailed(
+                        stage: "Pass1 flush buffer create",
+                        underlying: NSError(domain: "AwesomeAudio", code: -1)
+                    )
+                }
+                writeBuffer.frameLength = AVAudioFrameCount(thisChunk)
+                if let channelData = writeBuffer.floatChannelData?[0] {
+                    channelData.initialize(from: base, count: thisChunk)
+                }
+                try cafFile.write(from: writeBuffer)
+            }
+
+            flushRemaining -= thisChunk
         }
 
         return (analysis: lufsAnalyzer.finalize(), pass1Latency: pass1Latency)
@@ -410,6 +461,45 @@ actor ProcessingCoordinator {
                 fractionComplete: 0.70 + fraction * 0.25,
                 passNumber: 2
             ))
+        }
+
+        var flushRemaining = pass2Latency
+        while flushRemaining > 0 {
+            try Task.checkCancellation()
+
+            let actualFrames = min(chunkSize, flushRemaining)
+            var chunkSamples = [Float](repeating: 0, count: actualFrames)
+
+            chunkSamples.withUnsafeMutableBufferPointer { ptr in
+                guard let base = ptr.baseAddress else { return }
+                for processor in pass2StreamingProcessors {
+                    processor.process(base, frameCount: actualFrames)
+                }
+            }
+
+            if let ditherer {
+                chunkSamples.withUnsafeMutableBufferPointer { ptr in
+                    guard let base = ptr.baseAddress else { return }
+                    ditherer.apply(base, frameCount: actualFrames)
+                }
+            }
+
+            var writeStart = 0
+            if leadingSamplesToTrim > 0 {
+                let skip = min(leadingSamplesToTrim, actualFrames)
+                leadingSamplesToTrim -= skip
+                writeStart = skip
+            }
+
+            let framesToWrite = actualFrames - writeStart
+            if framesToWrite > 0 {
+                try chunkSamples.withUnsafeMutableBufferPointer { ptr in
+                    guard let src = ptr.baseAddress else { return }
+                    try wavWriter.append(samples: src + writeStart, frameCount: framesToWrite)
+                }
+            }
+
+            flushRemaining -= actualFrames
         }
     }
 
