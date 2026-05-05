@@ -13,6 +13,46 @@ struct TruePeakLimiterTests {
         #expect(limiter.latencySamples == 240)
     }
 
+    @Test func reportsActualLookaheadDelay() {
+        let limiter = TruePeakLimiter(ceilingDbTP: 0.0)
+        var impulse = [Float](repeating: 0, count: limiter.latencySamples + 1)
+        impulse[0] = 0.5
+
+        impulse.withUnsafeMutableBufferPointer { ptr in
+            limiter.process(ptr.baseAddress!, frameCount: ptr.count)
+        }
+
+        #expect(AudioTestHelpers.peakAbsolute(Array(impulse.prefix(limiter.latencySamples))) == 0)
+        #expect(abs(impulse[limiter.latencySamples] - 0.5) < 1e-6)
+    }
+
+    @Test func transientPeakIsStillLimitedAfterLookaheadDelay() {
+        let limiter = TruePeakLimiter(ceilingDbTP: -1.0)
+        var impulse = [Float](repeating: 0, count: limiter.latencySamples + 16)
+        impulse[0] = 1.0
+
+        impulse.withUnsafeMutableBufferPointer { ptr in
+            limiter.process(ptr.baseAddress!, frameCount: ptr.count)
+        }
+
+        let peakDb = AudioTestHelpers.linearToDb(AudioTestHelpers.peakAbsolute(impulse))
+        #expect(peakDb <= -0.9, "Delayed transient should remain limited, got \(peakDb) dB")
+    }
+
+    @Test func repeatedTransientsRefreshLookaheadHold() {
+        let limiter = TruePeakLimiter(ceilingDbTP: -1.0)
+        var impulses = [Float](repeating: 0, count: limiter.latencySamples + 240)
+        impulses[0] = 1.0
+        impulses[200] = 1.0
+
+        impulses.withUnsafeMutableBufferPointer { ptr in
+            limiter.process(ptr.baseAddress!, frameCount: ptr.count)
+        }
+
+        let peakDb = AudioTestHelpers.linearToDb(AudioTestHelpers.peakAbsolute(impulses))
+        #expect(peakDb <= -0.9, "Repeated delayed transients should remain limited, got \(peakDb) dB")
+    }
+
     // MARK: - Test 2: 0 dBFS sine → output true peak ≤ -0.9 dBTP
 
     @Test func zeroDbusSineIsClamped() {
