@@ -48,6 +48,7 @@ vendor/deepfilternet/libdeepfilter.a
 
 # Superpowers brainstorm sessions
 .superpowers/
+.worktrees/
 
 # Environment / secrets
 .env
