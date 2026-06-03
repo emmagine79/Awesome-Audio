@@ -10,6 +10,10 @@ let package = Package(
         .library(
             name: "AwesomeAudio",
             targets: ["AwesomeAudio"]
+        ),
+        .executable(
+            name: "AwesomeAudioApp",
+            targets: ["AwesomeAudioExecutable"]
         )
     ],
     dependencies: [
@@ -25,8 +29,11 @@ let package = Package(
                 .product(name: "DSWaveformImage", package: "DSWaveformImage")
             ],
             path: "AwesomeAudio",
-            // Exclude AppLayer (SwiftData @Model wrappers, Xcode-only) and the @main app entry point
-            exclude: ["AppLayer", "AwesomeAudioApp.swift"],
+            exclude: ["AwesomeAudioApp.swift"],
+            resources: [
+                .process("Resources/Assets.xcassets"),
+                .copy("Resources/DeepFilterNet3_onnx.tar.gz")
+            ],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency")
             ]
@@ -38,6 +45,11 @@ let package = Package(
                 .product(name: "Testing", package: "swift-testing")
             ],
             path: "AwesomeAudioTests"
+        ),
+        .executableTarget(
+            name: "AwesomeAudioExecutable",
+            dependencies: ["AwesomeAudio"],
+            path: "AwesomeAudioExecutable"
         )
     ]
 )

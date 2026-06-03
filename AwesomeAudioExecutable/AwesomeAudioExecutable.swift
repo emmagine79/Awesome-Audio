@@ -1,7 +1,8 @@
+import AwesomeAudio
 import SwiftUI
 
 @main
-struct AwesomeAudioApp: App {
+struct AwesomeAudioExecutable: App {
     @State private var appSettings = AppSettings()
     @State private var presetManager = PresetManager()
 
@@ -18,12 +19,6 @@ struct AwesomeAudioApp: App {
 
         Settings {
             SettingsView(settings: appSettings, presetManager: presetManager)
-        }
-    }
-
-    init() {
-        if AppSettings().cleanupTemporaryFilesOnLaunch {
-            TempFileManager.cleanupStaleFiles()
         }
     }
 }

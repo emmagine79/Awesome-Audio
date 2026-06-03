@@ -6,6 +6,7 @@ struct PresetEditorView: View {
 
     var viewModel: AudioProcessingViewModel
     var presetManager: PresetManager
+    var editingPreset: Preset?
     @Binding var isPresented: Bool
 
     @State private var presetName: String = ""
@@ -17,6 +18,9 @@ struct PresetEditorView: View {
     @State private var compressionPreset: CompressionPreset = .medium
     @State private var targetLUFS: Float = -16
     @State private var outputBitDepth: Int = 24
+
+    private var isEditing: Bool { editingPreset != nil }
+    private var savesAsCopy: Bool { editingPreset?.isBuiltIn == true }
 
     private var isNameValid: Bool {
         !presetName.trimmingCharacters(in: .whitespaces).isEmpty
@@ -46,7 +50,7 @@ struct PresetEditorView: View {
             Image(systemName: "slider.horizontal.3")
                 .font(.title3)
                 .foregroundStyle(.purple)
-            Text("Save as Preset")
+            Text(title)
                 .font(.title3.bold())
             Spacer()
         }
@@ -170,8 +174,8 @@ struct PresetEditorView: View {
 
             Spacer()
 
-            Button("Create Preset") {
-                createPreset()
+            Button(actionTitle) {
+                savePreset()
             }
             .buttonStyle(.borderedProminent)
             .disabled(!isNameValid)
@@ -183,17 +187,19 @@ struct PresetEditorView: View {
     // MARK: - Actions
 
     private func loadFromViewModel() {
-        highPassCutoff = viewModel.highPassCutoff
-        noiseReductionStrength = viewModel.noiseReductionStrength
-        deEssAmount = viewModel.deEssAmount
-        presenceAmount = viewModel.presenceAmount
-        airAmount = viewModel.airAmount
-        compressionPreset = viewModel.compressionPreset
-        targetLUFS = viewModel.targetLUFS
-        outputBitDepth = viewModel.outputBitDepth
+        let source = editingPreset ?? viewModel.selectedPreset
+        presetName = editingPreset.map { $0.isBuiltIn ? "\($0.name) Custom" : $0.name } ?? ""
+        highPassCutoff = source?.highPassCutoff ?? viewModel.highPassCutoff
+        noiseReductionStrength = source?.noiseReductionStrength ?? viewModel.noiseReductionStrength
+        deEssAmount = source?.deEssAmount ?? viewModel.deEssAmount
+        presenceAmount = source?.presenceAmount ?? viewModel.presenceAmount
+        airAmount = source?.airAmount ?? viewModel.airAmount
+        compressionPreset = source?.compressionPreset ?? viewModel.compressionPreset
+        targetLUFS = source?.targetLUFS ?? viewModel.targetLUFS
+        outputBitDepth = source?.outputBitDepth ?? viewModel.outputBitDepth
     }
 
-    private func createPreset() {
+    private func savePreset() {
         let source = Preset(
             name: presetName.trimmingCharacters(in: .whitespaces),
             isBuiltIn: false,
@@ -207,8 +213,19 @@ struct PresetEditorView: View {
             truePeakCeiling: viewModel.truePeakCeiling,
             outputBitDepth: outputBitDepth
         )
-        presetManager.createPreset(from: source, name: source.name)
+        let saved = presetManager.savePreset(target: editingPreset, from: source, name: source.name)
+        viewModel.applyPreset(saved)
         isPresented = false
+    }
+
+    private var title: String {
+        if savesAsCopy { return "Customize Factory Preset" }
+        return isEditing ? "Edit Preset" : "Save as Preset"
+    }
+
+    private var actionTitle: String {
+        if savesAsCopy { return "Save Custom Copy" }
+        return isEditing ? "Save Changes" : "Create Preset"
     }
 }
 

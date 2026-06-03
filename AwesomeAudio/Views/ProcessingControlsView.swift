@@ -6,24 +6,53 @@ import SwiftUI
 struct ProcessingControlsView: View {
 
     @Bindable var viewModel: AudioProcessingViewModel
+    var onSavePreset: () -> Void = {}
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(alignment: .leading, spacing: 20) {
+                header
                 controlGrid
                 targetOutputRow
                 storageNote
                 processButton
             }
-            .padding(24)
+            .frame(maxWidth: 980, alignment: .leading)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 24)
+            .frame(maxWidth: .infinity)
+        }
+        .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Processing Chain")
+                    .font(.title2.bold())
+                Text("Tune cleanup, tone, dynamics, and delivery target before rendering.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button {
+                onSavePreset()
+            } label: {
+                Label(viewModel.selectedPreset == nil ? "Save Preset" : "Edit Preset", systemImage: "slider.horizontal.3")
+            }
+            .buttonStyle(.bordered)
         }
     }
 
-    // MARK: - Control Grid (2×2)
+    // MARK: - Control Grid
 
     private var controlGrid: some View {
         LazyVGrid(
-            columns: [GridItem(.flexible()), GridItem(.flexible())],
+            columns: [GridItem(.adaptive(minimum: 260), spacing: 14)],
             spacing: 14
         ) {
             noiseReductionCard
@@ -166,7 +195,7 @@ struct ProcessingControlsView: View {
     // MARK: - Target & Output Row
 
     private var targetOutputRow: some View {
-        HStack(spacing: 14) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 14)], spacing: 14) {
             ControlCard(
                 title: "Target Loudness",
                 icon: "speaker.wave.3.fill",
@@ -191,6 +220,26 @@ struct ProcessingControlsView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
+            }
+
+            ControlCard(
+                title: "True Peak Ceiling",
+                icon: "gauge.with.dots.needle.33percent",
+                iconColor: .red
+            ) {
+                VStack(spacing: 6) {
+                    Slider(value: $viewModel.truePeakCeiling, in: -3.0 ... -1.0, step: 0.5)
+                        .tint(.red)
+                    HStack {
+                        Text("-3 dBTP").font(.caption2).foregroundStyle(.tertiary)
+                        Spacer()
+                        Text(String(format: "%.1f dBTP", viewModel.truePeakCeiling))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("-1 dBTP").font(.caption2).foregroundStyle(.tertiary)
+                    }
+                }
             }
         }
     }

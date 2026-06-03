@@ -81,7 +81,7 @@ struct PresetSnapshot: Codable, Equatable {
 
 // MARK: - Preset (plain Swift class, usable without SwiftData)
 
-final class Preset {
+final class Preset: Identifiable, Codable, Equatable {
     static func attenuationLimitDb(for strength: Float) -> Float {
         let clamped = max(0, min(1, strength))
         return 6.0 + clamped * 24.0
@@ -104,8 +104,10 @@ final class Preset {
     var outputBitDepth: Int            // 16 or 24
 
     init(
+        id: UUID = UUID(),
         name: String,
         isBuiltIn: Bool = false,
+        createdAt: Date = Date(),
         highPassCutoff: Float = 80,
         noiseReductionStrength: Float = 0.35,
         deEssAmount: Float = 0.5,
@@ -116,10 +118,10 @@ final class Preset {
         truePeakCeiling: Float = -2.0,
         outputBitDepth: Int = 24
     ) {
-        self.id = UUID()
+        self.id = id
         self.name = name
         self.isBuiltIn = isBuiltIn
-        self.createdAt = Date()
+        self.createdAt = createdAt
         self.highPassCutoff = highPassCutoff
         self.noiseReductionStrength = noiseReductionStrength
         self.deEssAmount = deEssAmount
@@ -129,6 +131,33 @@ final class Preset {
         self.targetLUFS = targetLUFS
         self.truePeakCeiling = truePeakCeiling
         self.outputBitDepth = outputBitDepth
+    }
+
+    static func == (lhs: Preset, rhs: Preset) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func copy(
+        id: UUID = UUID(),
+        name: String? = nil,
+        isBuiltIn: Bool? = nil,
+        createdAt: Date = Date()
+    ) -> Preset {
+        Preset(
+            id: id,
+            name: name ?? self.name,
+            isBuiltIn: isBuiltIn ?? self.isBuiltIn,
+            createdAt: createdAt,
+            highPassCutoff: highPassCutoff,
+            noiseReductionStrength: noiseReductionStrength,
+            deEssAmount: deEssAmount,
+            presenceAmount: presenceAmount,
+            airAmount: airAmount,
+            compressionPreset: compressionPreset,
+            targetLUFS: targetLUFS,
+            truePeakCeiling: truePeakCeiling,
+            outputBitDepth: outputBitDepth
+        )
     }
 
     func snapshot() -> PresetSnapshot {
@@ -148,7 +177,7 @@ final class Preset {
 
     // MARK: Built-in presets
 
-    static let builtInPresets: [Preset] = [
+    static var builtInPresets: [Preset] { [
         Preset(name: "Podcast Standard", isBuiltIn: true,
                highPassCutoff: 80, noiseReductionStrength: 0.10, deEssAmount: 0.20,
                presenceAmount: 0.30, airAmount: 0.18,
@@ -165,5 +194,5 @@ final class Preset {
                highPassCutoff: 60, noiseReductionStrength: 0.0, deEssAmount: 0.10,
                presenceAmount: 0.20, airAmount: 0.12,
                compressionPreset: .gentle, targetLUFS: -16, truePeakCeiling: -2.0, outputBitDepth: 24),
-    ]
+    ] }
 }

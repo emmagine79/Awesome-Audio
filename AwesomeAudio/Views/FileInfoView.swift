@@ -10,6 +10,7 @@ struct FileInfoView: View {
         HStack(spacing: 12) {
             fileIcon
             fileDetails
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             Spacer()
             lufsDisplay
         }

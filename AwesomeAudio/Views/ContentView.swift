@@ -2,30 +2,53 @@ import SwiftUI
 
 // MARK: - ContentView
 
-struct ContentView: View {
+public struct ContentView: View {
 
     @State private var viewModel = AudioProcessingViewModel()
-    @State private var presetManager = PresetManager()
+    var appSettings: AppSettings
+    var presetManager: PresetManager
     @State private var showingPresetEditor = false
+    @State private var editingPreset: Preset?
 
-    var body: some View {
+    public init(appSettings: AppSettings, presetManager: PresetManager) {
+        self.appSettings = appSettings
+        self.presetManager = presetManager
+    }
+
+    public var body: some View {
         NavigationSplitView {
             SidebarView(
                 presetManager: presetManager,
                 viewModel: viewModel,
-                showingPresetEditor: $showingPresetEditor
+                showingPresetEditor: $showingPresetEditor,
+                editingPreset: $editingPreset
             )
+            .navigationSplitViewColumnWidth(min: 260, ideal: 300, max: 360)
         } detail: {
             detailView
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(minWidth: 780, minHeight: 520)
+        .frame(minWidth: 1080, minHeight: 680)
+        .onAppear {
+            viewModel.applySettings(appSettings)
+        }
+        .onChange(of: appSettings.defaultTargetLUFS) { _, _ in viewModel.applySettings(appSettings) }
+        .onChange(of: appSettings.defaultOutputBitDepth) { _, _ in viewModel.applySettings(appSettings) }
+        .onChange(of: appSettings.truePeakCeiling) { _, _ in viewModel.applySettings(appSettings) }
+        .onChange(of: appSettings.outputSuffix) { _, _ in viewModel.applySettings(appSettings) }
+        .onChange(of: appSettings.revealExportInFinder) { _, _ in viewModel.applySettings(appSettings) }
         .sheet(isPresented: $showingPresetEditor) {
             PresetEditorView(
                 viewModel: viewModel,
                 presetManager: presetManager,
+                editingPreset: editingPreset,
                 isPresented: $showingPresetEditor
             )
+        }
+        .onChange(of: showingPresetEditor) { _, isShowing in
+            if !isShowing {
+                editingPreset = nil
+            }
         }
     }
 
@@ -40,7 +63,13 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 FileInfoView(viewModel: viewModel)
                 Divider()
-                ProcessingControlsView(viewModel: viewModel)
+                ProcessingControlsView(
+                    viewModel: viewModel,
+                    onSavePreset: {
+                        editingPreset = viewModel.selectedPreset
+                        showingPresetEditor = true
+                    }
+                )
             }
         case .processing:
             ProcessingProgressView(viewModel: viewModel)

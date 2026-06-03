@@ -54,6 +54,8 @@ final class AudioProcessingViewModel {
     var targetLUFS: Float = -16
     var truePeakCeiling: Float = -2.0
     var outputBitDepth: Int = 24
+    var outputSuffix: String = "_processed"
+    var revealExportInFinder: Bool = false
 
     // MARK: - Computed
 
@@ -97,6 +99,14 @@ final class AudioProcessingViewModel {
         targetLUFS = preset.targetLUFS
         truePeakCeiling = preset.truePeakCeiling
         outputBitDepth = preset.outputBitDepth
+    }
+
+    func applySettings(_ settings: AppSettings) {
+        targetLUFS = settings.defaultTargetLUFS
+        truePeakCeiling = settings.truePeakCeiling
+        outputBitDepth = settings.defaultOutputBitDepth
+        outputSuffix = settings.outputSuffix
+        revealExportInFinder = settings.revealExportInFinder
     }
 
     // MARK: - Processing
@@ -156,6 +166,9 @@ final class AudioProcessingViewModel {
                 guard let self else { return }
                 do {
                     try await self.coordinator.export(tempURL: tempURL, to: destURL)
+                    if self.revealExportInFinder {
+                        NSWorkspace.shared.activateFileViewerSelecting([destURL])
+                    }
                 } catch {
                     self.appState = .error(error.localizedDescription)
                 }
@@ -219,6 +232,7 @@ final class AudioProcessingViewModel {
     private func suggestedOutputFilename() -> String {
         guard let info = audioFileInfo else { return "processed_audio.wav" }
         let base = info.sourceURL.deletingPathExtension().lastPathComponent
-        return "\(base)_processed.wav"
+        let suffix = outputSuffix.trimmingCharacters(in: .whitespacesAndNewlines)
+        return "\(base)\(suffix.isEmpty ? "_processed" : suffix).wav"
     }
 }

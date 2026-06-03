@@ -8,16 +8,20 @@ struct ResultsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 28) {
+            VStack(spacing: 24) {
                 successHeader
                 comparisonTable
                 processingTimeRow
                 toleranceNote
                 actionButtons
             }
-            .padding(40)
+            .frame(maxWidth: 720)
+            .padding(.horizontal, 32)
+            .padding(.vertical, 36)
+            .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.windowBackgroundColor))
     }
 
     // MARK: - Success Header
@@ -76,7 +80,7 @@ struct ResultsView: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
         )
-        .frame(maxWidth: 480)
+        .frame(maxWidth: 560)
     }
 
     private var comparisonHeaderRow: some View {
@@ -178,6 +182,7 @@ struct ResultsView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
         }
+        .frame(maxWidth: 560)
     }
 
     // MARK: - Color Helpers
